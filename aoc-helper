@@ -1,0 +1,140 @@
+#!venv/bin/python
+import logging
+import os
+import shutil
+import subprocess
+
+import pytest
+import requests
+import typer
+from bs4 import BeautifulSoup
+
+app = typer.Typer()
+logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
+
+
+def get_sample_input(day: int) -> None:
+    try:
+        res = requests.get(f"https://adventofcode.com/2021/day/{day}")
+    except requests.exceptions.RequestException as e:
+        logging.error(e)
+    soup = BeautifulSoup(res.text, "html.parser")
+
+    sample = soup.find("pre")
+    try:
+        logging.info(repr(sample.text))
+    except AttributeError:
+        logging.error("Couldn't find sample.")
+
+
+def download_input(day: int) -> None:
+    try:
+        res = requests.get(
+            f"https://adventofcode.com/2021/day/{day}/input",
+            cookies={"session": os.environ["AOC_COOKIE"]},
+            timeout=10,
+        )
+    except KeyError:
+        raise KeyError("AOC_COOKIE environment variable not set.")
+    except requests.exceptions.RequestException:
+        raise
+
+    if res.status_code != 200:
+        raise requests.exceptions.RequestException(
+            f"Failed to download input for day {day}"
+        )
+
+    logging.info("Downloading input...")
+    with open(f"day{day}/input.txt", "w") as f:
+        f.write(res.text)
+    logging.info("Done!")
+
+
+def submit_solution(day: int, part: int, solution: str) -> None:
+    input("Press enter to continue or Ctrl+C to cancel.")
+
+    try:
+        res = requests.post(
+            f"https://adventofcode.com/2021/day/{day}/answer",
+            cookies={"session": os.environ["AOC_COOKIE"]},
+            data={"level": part, "answer": solution},
+            timeout=10,
+        )
+    except KeyError:
+        raise KeyError("AOC_COOKIE environment variable not set.")
+    except requests.exceptions.RequestException:
+        raise
+
+    if res.status_code != 200:
+        raise requests.exceptions.RequestException(
+            f"Failed to submit solution for day {day}"
+        )
+
+    soup = BeautifulSoup(res.text, "html.parser")
+    message = soup.find("article").text
+    if "That's not the right answer" in message:
+        logging.error(f"Incorrect submission!\n{message.strip()}")
+    elif "You gave an answer too recently" in message:
+        logging.error(f"Time penalty active!\n{message.strip()}")
+    else:
+        logging.info("SUCCESS!")
+
+
+@app.command(help="Setups structue for day")
+def setup(day: int = typer.Option(..., "--day", "-d")) -> None:
+    os.makedirs(f"day{day}", exist_ok=True)
+    shutil.copy("template.py", f"day{day}/part1.py")
+    shutil.copy("template.py", f"day{day}/part2.py")
+    res = subprocess.run(["touch", "__init__.py"], cwd=f"day{day}")
+    if res.returncode != 0:
+        raise subprocess.CalledProcessError(res.returncode, "touch")
+
+
+@app.command(help="Downloads input for day")
+def get_data(day: int = typer.Option(..., "--day", "-d")) -> None:
+    try:
+        get_sample_input(day)
+    except requests.exceptions.RequestException as e:
+        logging.error(e)
+
+    try:
+        download_input(day)
+    except requests.exceptions.RequestException:
+        raise
+
+
+@app.command(
+    help="Runs test, and if test passes, submits solution on prompt confirmation"
+)
+def autorun(
+    day: int = typer.Option(..., "--day", "-d"),
+    part: int = typer.Option(..., "--part", "-p"),
+    submit: bool = typer.Option(False, "--submit"),
+) -> None:
+    logging.info("Running test...")
+    retcode = pytest.main(["-v", "-s", "--no-header", f"day{day}/part{part}.py"])
+    if retcode:
+        return
+
+    logging.info("Running solution...")
+    res = subprocess.run(
+        ["venv/bin/python", "-m", f"day{day}.part{part}"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    if res.returncode:
+        logging.error(res.stderr.decode("utf-8", errors="backslashreplace").strip())
+        return
+    solution = res.stdout.decode("utf-8").strip()
+    logging.info(f"Solution: {solution}")
+
+    if submit:
+        logging.info(f"Submitting solution {solution} for day {day} part {part}")
+        try:
+            submit_solution(day, part, solution)
+        except requests.exceptions.RequestException:
+            raise
+
+
+if __name__ == "__main__":
+    app()
