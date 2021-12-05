@@ -22,7 +22,15 @@ def get_sample_input(day: int) -> None:
 
     sample = soup.find("pre")
     try:
-        logging.info(repr(sample.text))
+        per_line = 64
+        data = sample.text.strip()
+        new_line = "\n"
+        logging.info(
+            f"""{new_line.join(
+                repr(data[i : i + per_line])
+                for i in range(0, len(data), per_line)
+            )}"""
+        )
     except AttributeError:
         logging.error("Couldn't find sample.")
 
