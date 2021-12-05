@@ -1,6 +1,25 @@
 import argparse
 import os
-from typing import Tuple, Union
+import time
+from typing import Generator, Tuple, Union
+
+from contextlib import contextmanager
+
+
+@contextmanager
+def timer() -> Generator[None, None, None]:
+    start = time.perf_counter()
+    yield
+    end = time.perf_counter()
+    runtime = end - start
+    unit = "s"
+    if runtime < 10:
+        runtime *= 1000
+        unit = "ms"
+    if runtime < 10:
+        runtime *= 1000
+        unit = "μs"
+    print(f"Time: {runtime} {unit}")
 
 
 class BaseSolution:
@@ -10,7 +29,7 @@ class BaseSolution:
         raise NotImplementedError
 
     def main(self) -> int:
-        with open(os.path.join(self._path, "input.txt")) as f:
+        with open(os.path.join(self._path, "input.txt")) as f, timer():
             print(self.solve(f.read().strip()))
 
         return 0

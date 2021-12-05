@@ -133,7 +133,8 @@ def autorun(
     if res.returncode:
         logging.error(res.stderr.decode("utf-8", errors="backslashreplace").strip())
         return
-    solution = res.stdout.decode("utf-8").strip()
+    solution, time_info = res.stdout.decode("utf-8").strip().split("\n")
+    logging.info(time_info)
     logging.info(f"Solution: {solution}")
 
     if submit:
