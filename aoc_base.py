@@ -36,7 +36,7 @@ class BaseSolution:
 
 
 class BaseTest:
-    _SAMPLES: Union[Tuple[()], Tuple[Tuple[str, int]]] = ()
+    _SAMPLES: Union[Tuple[()], Tuple[Tuple[str, int], ...]] = ()
 
     def solve(self, s: str) -> int:
         raise NotImplementedError
