@@ -133,14 +133,19 @@ def autorun(
     if res.returncode:
         logging.error(res.stderr.decode("utf-8", errors="backslashreplace").strip())
         return
-    solution, time_info = res.stdout.decode("utf-8").strip().split("\n")
+    *solution, time_info = res.stdout.decode("utf-8").strip().split("\n")
     logging.info(time_info)
-    logging.info(f"Solution: {solution}")
+    if len(solution) != 1:
+        logging.info("Solution:")
+        for solution_line in solution[:-1]:
+            logging.info(solution_line)
+        return
+    logging.info(f"Solution: {solution[0]}")
 
     if submit:
-        logging.info(f"Submitting solution {solution} for day {day} part {part}")
+        logging.info(f"Submitting solution {solution[0]} for day {day} part {part}")
         try:
-            submit_solution(day, part, solution)
+            submit_solution(day, part, solution[0])
         except requests.exceptions.RequestException:
             raise
 
