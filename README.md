@@ -157,4 +157,10 @@ Time: 117.75686199871416 ms
 + python -m day18.part2
 4650
 Time: 1959.0929290006898 ms
++ python -m day19.part1
+405
+Time: 456.5092969860416 ms
++ python -m day19.part2
+12306
+Time: 458.3281539962627 ms
 ```
